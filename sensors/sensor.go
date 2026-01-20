@@ -28,7 +28,7 @@ func main() {
 
 	q, err := ch.QueueDeclare(
 		"sensor_data",
-		false,
+		true,
 		false,
 		false,
 		false,
