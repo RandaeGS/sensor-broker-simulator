@@ -69,7 +69,7 @@ func createMessage() Data {
 	formattedDate := generatedAt.Format("2006-01-02")
 
 	return Data{
-		ID:             rand.IntN(100),
+		ID:             rand.IntN(2) + 1,
 		Temperature:    10 + rand.Float64()*30,
 		Humidity:       10 + rand.Float64()*30,
 		GenerationDate: formattedDate,
