@@ -7,32 +7,30 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.websocket.OnClose;
 import jakarta.websocket.OnOpen;
 import jakarta.websocket.Session;
+import jakarta.websocket.server.PathParam;
 import jakarta.websocket.server.ServerEndpoint;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-@ServerEndpoint("/sensor-data")
+@ServerEndpoint("/sensor-data/{sensor}")
 @ApplicationScoped
 public class SensorDataWebSocket {
 
-    private static List<Session> sessions = new ArrayList<>();
+    private static Map<Session, Integer> sessions = new ConcurrentHashMap<>();
     Logger logger = LoggerFactory.getLogger(SensorDataWebSocket.class);
 
     public static void broadcast(SensorData message) {
-        sessions.forEach(s -> {
-            s.getAsyncRemote().sendObject(Json.encode(message), result -> {
-                if (result.getException() != null) {
-                    System.out.println("Unable to send message: " + result.getException());
-                }
-            });
-        });
+        sessions.entrySet()
+                .stream()
+                .filter(entry -> entry.getValue().equals(message.id))
+                .forEach(entry -> entry.getKey().getAsyncRemote().sendObject(Json.encode(message)));
     }
 
     @OnOpen
-    public void onOpen(Session session) {
-        sessions.add(session);
-        logger.info("Connected session: " + session.getId());
+    public void onOpen(Session session, @PathParam("sensor") Integer sensor) {
+        sessions.put(session, sensor);
+        logger.info("Connected session: " + session.getId() + " for sensor: " + sensor);
     }
 
     @OnClose
