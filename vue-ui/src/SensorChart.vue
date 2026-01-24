@@ -9,7 +9,8 @@ import {
   CategoryScale,
   Legend,
   Tooltip,
-  Title
+  Title,
+  Colors
 } from 'chart.js'
 
 Chart.register(
@@ -20,7 +21,8 @@ Chart.register(
   CategoryScale,
   Legend,
   Tooltip,
-  Title
+  Title,
+  Colors
 )
 
 interface SensorData {
@@ -29,6 +31,7 @@ interface SensorData {
   generationDate: string
 }
 
+const selectedSensor = ref<number>(1)
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let chart: Chart | null = null
 let socket: WebSocket | null = null
@@ -60,7 +63,7 @@ function createEmptyChart(canvas: HTMLCanvasElement) {
     },
     options: {
       responsive: true,
-      animation: false, // important for live updates
+      animation: false,
       plugins: {
         title: {
           display: true,
@@ -79,6 +82,15 @@ function createEmptyChart(canvas: HTMLCanvasElement) {
           min: 0,
           max: 40
         },
+        x: {
+          display: true,
+          title: {
+            display: true,
+            text: 'Time'
+          },
+          min: 0,
+          max: 60
+        }
       }
     }
   })
@@ -91,7 +103,7 @@ onMounted(() => {
   createEmptyChart(canvasRef.value)
 
   // 2. Open WebSocket
-  socket = new WebSocket('ws://localhost:8080/sensor-data')
+  socket = new WebSocket('ws://localhost:8080/sensor-data/' + selectedSensor.value)
 
   socket.onmessage = (event) => {
     if (!chart) return
@@ -117,7 +129,31 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div>
+  <div id="chartContainer">
+
+    <div id="selector">
+      <h3>Select a sensor</h3>
+      <select name="select-sensor" v-model="selectedSensor" id="sensor-selector">
+        <option value="1" selected>Sensor 1</option>
+        <option value="2">Sensor 2</option>
+      </select>
+    </div>
+
     <canvas ref="canvasRef"></canvas>
   </div>
 </template>
+
+<style scoped>
+#selector {
+  display: flex;
+  gap: 0.5rem;
+}
+
+#chartContainer {
+  padding: 1rem;
+  border-style: inset;
+  border-width: 3px;
+  border-radius: 1rem;
+  border-color: black;
+}
+</style>
