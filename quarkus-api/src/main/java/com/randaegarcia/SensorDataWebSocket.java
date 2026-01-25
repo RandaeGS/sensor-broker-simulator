@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @ApplicationScoped
 public class SensorDataWebSocket {
 
-    private static Map<Session, Integer> sessions = new ConcurrentHashMap<>();
+    private static final Map<Session, Integer> sessions = new ConcurrentHashMap<>();
     Logger logger = LoggerFactory.getLogger(SensorDataWebSocket.class);
 
     public static void broadcast(SensorData message) {

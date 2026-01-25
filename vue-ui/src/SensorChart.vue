@@ -77,7 +77,7 @@ function createEmptyChart(canvas: HTMLCanvasElement) {
           position: 'left',
           title: {
             display: true,
-            text: 'Value'
+            text: 'Values'
           },
           min: 0,
           max: 40
@@ -86,14 +86,19 @@ function createEmptyChart(canvas: HTMLCanvasElement) {
           display: true,
           title: {
             display: true,
-            text: 'Time'
+            text: 'Time (Minutes)'
           },
-          min: 0,
-          max: 60
         }
       }
     }
   })
+}
+
+const currentMinuteData = {
+  minute: null,
+  tempSum: 0,
+  humSum: 0,
+  count: 0
 }
 
 onMounted(() => {
@@ -105,16 +110,48 @@ onMounted(() => {
   // 2. Open WebSocket
   socket = new WebSocket('ws://localhost:8080/sensor-data/' + selectedSensor.value)
 
+
   socket.onmessage = (event) => {
-    if (!chart) return
+    if (!chart) return;
 
-    const data: SensorData = JSON.parse(event.data)
+    const data = JSON.parse(event.data);
+    const date = new Date(data.generationDate);
+    const minute = date.getMinutes();
 
-    chart.data.labels?.push(data.generationDate)
-    chart.data.datasets[0].data.push(data.temperature)
-    chart.data.datasets[1].data.push(data.humidity)
+    // Check if we are still in the same minute
+    if (currentMinuteData.minute === minute) {
+      // 1. Update existing bucket
+      currentMinuteData.tempSum += data.temperature;
+      currentMinuteData.humSum += data.humidity;
+      currentMinuteData.count++;
 
-    chart.update()
+      const lastIdx = chart.data.labels.length - 1;
+
+      // 2. Calculate new averages
+      chart.data.datasets[0].data[lastIdx] = currentMinuteData.tempSum / currentMinuteData.count;
+      chart.data.datasets[1].data[lastIdx] = currentMinuteData.humSum / currentMinuteData.count;
+    } else {
+      // 1. New minute detected: Reset counters
+      currentMinuteData.minute = minute;
+      currentMinuteData.tempSum = data.temperature;
+      currentMinuteData.humSum = data.humidity;
+      currentMinuteData.count = 1;
+
+      // 2. Push new points to the chart
+      chart.data.labels.push(minute);
+      chart.data.datasets[0].data.push(data.temperature);
+      chart.data.datasets[1].data.push(data.humidity);
+
+      // Optional: Keep only the last 60 minutes on the chart
+      if (chart.data.labels.length > 60) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+        chart.data.datasets[1].data.shift();
+      }
+    }
+
+    // Use 'none' mode for better performance during high-frequency updates
+    chart.update('none');
   }
 
   socket.onerror = (err) => {
@@ -126,6 +163,22 @@ onBeforeUnmount(() => {
   socket?.close()
   chart?.destroy()
 })
+
+function clearData() {
+  if (!chart) return;
+
+  // 1. Empty the chart arrays
+  chart.data.labels = [];
+  chart.data.datasets[0].data = [];
+  chart.data.datasets[1].data = [];
+  chart.update();
+
+  // 2. Reset your averaging bucket
+  currentMinuteData.minute = null;
+  currentMinuteData.count = 0;
+  currentMinuteData.tempSum = 0;
+  currentMinuteData.humSum = 0;
+}
 </script>
 
 <template>
@@ -133,7 +186,7 @@ onBeforeUnmount(() => {
 
     <div id="selector">
       <h3>Select a sensor</h3>
-      <select name="select-sensor" v-model="selectedSensor" id="sensor-selector">
+      <select name="select-sensor" v-model="selectedSensor" @change="clearData()" id="sensor-selector">
         <option value="1" selected>Sensor 1</option>
         <option value="2">Sensor 2</option>
       </select>

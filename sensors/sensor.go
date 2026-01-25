@@ -66,7 +66,7 @@ func sendMessage(q amqp.Queue, body []byte, ch *amqp.Channel, ctx context.Contex
 
 func createMessage() Data {
 	generatedAt := time.Now()
-	formattedDate := generatedAt.Format("2006-01-02")
+	formattedDate := generatedAt.Format("2006-01-02T15:04:05.999999999")
 
 	return Data{
 		ID:             rand.IntN(2) + 1,
